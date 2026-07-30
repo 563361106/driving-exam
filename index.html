@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>2026驾考模拟考试系统</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --primary:#1a73e8; --primary-dark:#0d47a1; --accent:#34a853; --danger:#ea4335;
+    --warn:#f9a825; --bg:#f0f4f8; --card:#fff; --text:#1a1a2e; --sub:#5f6368; --border:#e0e0e0;
+    --radius:14px; --shadow:0 2px 12px rgba(0,0,0,.08);
+  }
+  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+  .app { max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+
+  /* Header */
+  .header { background:linear-gradient(135deg,#0d47a1,#1a73e8); color:#fff; padding:16px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .header-top { display:flex; justify-content:space-between; align-items:center; }
+  .header h1 { font-size:18px; font-weight:700; }
+  .header .sub { font-size:12px; opacity:.85; margin-top:2px; }
+  .progress-bar { height:4px; background:rgba(255,255,255,.25); border-radius:2px; margin-top:10px; overflow:hidden; }
+  .progress-fill { height:100%; background:#34a853; border-radius:2px; transition:width .3s; width:0%; }
+  .timer { font-size:13px; font-weight:600; background:rgba(255,255,255,.15); padding:4px 10px; border-radius:12px; }
+
+  /* Pages */
+  .page { display:none; flex:1; padding:16px; overflow-y:auto; }
+  .page.active { display:block; }
+
+  /* Home */
+  .hero { background:linear-gradient(135deg,#1a73e8,#4285f4); color:#fff; border-radius:var(--radius); padding:24px 20px; text-align:center; margin-bottom:16px; }
+  .hero h2 { font-size:22px; margin-bottom:8px; }
+  .hero p { font-size:13px; opacity:.9; line-height:1.6; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+  .stat-card { background:var(--card); border-radius:10px; padding:12px 8px; text-align:center; box-shadow:var(--shadow); }
+  .stat-num { font-size:20px; font-weight:700; color:var(--primary); }
+  .stat-label { font-size:11px; color:var(--sub); margin-top:2px; }
+
+  .section-title { font-size:15px; font-weight:700; margin:16px 0 10px; color:var(--text); display:flex; align-items:center; gap:6px; }
+  .section-title::before { content:""; width:4px; height:16px; background:var(--primary); border-radius:2px; }
+
+  .exam-card { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:10px; box-shadow:var(--shadow); display:flex; align-items:center; gap:12px; cursor:pointer; transition:transform .15s; }
+  .exam-card:active { transform:scale(.97); }
+  .exam-icon { width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .exam-icon.blue { background:#e8f0fe; }
+  .exam-icon.green { background:#e6f4ea; }
+  .exam-icon.orange { background:#fef7e0; }
+  .exam-icon.red { background:#fce8e6; }
+  .exam-icon.purple { background:#f3e8fd; }
+  .exam-info { flex:1; }
+  .exam-info h3 { font-size:15px; margin-bottom:2px; }
+  .exam-info p { font-size:12px; color:var(--sub); }
+  .exam-arrow { color:var(--sub); font-size:18px; }
+
+  /* Question */
+  .q-meta { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .q-tag { font-size:11px; padding:3px 10px; border-radius:10px; font-weight:600; }
+  .q-tag.type { background:#e8f0fe; color:var(--primary); }
+  .q-tag.cat { background:#fef7e0; color:#e37400; }
+  .q-tag.diff { background:#fce8e6; color:var(--danger); }
+  .q-tag.hot { background:#f3e8fd; color:#7b1fa2; }
+
+  .q-stem { background:var(--card); border-radius:var(--radius); padding:18px; margin-bottom:12px; box-shadow:var(--shadow); }
+  .q-stem .q-num { font-size:13px; color:var(--primary); font-weight:700; margin-bottom:8px; }
+  .q-stem .q-text { font-size:16px; line-height:1.7; font-weight:500; }
+
+  .q-options { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+  .q-option { background:var(--card); border:2px solid var(--border); border-radius:var(--radius); padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all .2s; font-size:15px; }
+  .q-option:active { transform:scale(.98); }
+  .q-option.selected { border-color:var(--primary); background:#e8f0fe; }
+  .q-option.correct { border-color:var(--accent); background:#e6f4ea; }
+  .q-option.wrong { border-color:var(--danger); background:#fce8e6; }
+  .q-option.disabled { opacity:.6; }
+  .opt-letter { width:28px; height:28px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; }
+  .q-option.selected .opt-letter { background:var(--primary); color:#fff; }
+  .q-option.correct .opt-letter { background:var(--accent); color:#fff; }
+  .q-option.wrong .opt-letter { background:var(--danger); color:#fff; }
+
+  .q-explain { background:#fff8e1; border-left:4px solid var(--warn); border-radius:8px; padding:14px; margin-bottom:16px; display:none; }
+  .q-explain.show { display:block; }
+  .q-explain h4 { font-size:13px; color:#e37400; margin-bottom:6px; }
+  .q-explain p { font-size:13px; line-height:1.6; color:#5d4037; }
+
+  .btn-row { display:flex; gap:10px; margin-bottom:20px; }
+  .btn { flex:1; padding:14px; border:none; border-radius:var(--radius); font-size:15px; font-weight:600; cursor:pointer; text-align:center; transition:all .2s; }
+  .btn-primary { background:var(--primary); color:#fff; }
+  .btn-primary:active { background:var(--primary-dark); }
+  .btn-outline { background:transparent; color:var(--primary); border:2px solid var(--primary); }
+  .btn-warn { background:var(--warn); color:#fff; }
+  .btn-danger { background:var(--danger); color:#fff; }
+
+  /* Result */
+  .result-circle { width:120px; height:120px; border-radius:50%; margin:20px auto; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+  .result-circle.pass { background:conic-gradient(#34a853 calc(var(--pct)*1%), #e8f5e9 0); }
+  .result-circle.fail { background:conic-gradient(#ea4335 calc(var(--pct)*1%), #fce8e6 0); }
+  .result-circle span { font-size:28px; font-weight:700; }
+  .result-circle small { font-size:12px; color:var(--sub); }
+
+  .result-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0; }
+  .rs-card { background:var(--card); border-radius:10px; padding:12px; text-align:center; box-shadow:var(--shadow); }
+  .rs-num { font-size:22px; font-weight:700; }
+  .rs-label { font-size:11px; color:var(--sub); margin-top:2px; }
+
+  .wrong-list { margin-top:16px; }
+  .wrong-item { background:var(--card); border-radius:10px; padding:14px; margin-bottom:10px; box-shadow:var(--shadow); }
+  .wrong-item .wi-q { font-size:14px; font-weight:500; margin-bottom:6px; }
+  .wi-answer { font-size:12px; color:var(--danger); }
+  .wi-correct { font-size:12px; color:var(--accent); }
+
+  /* Knowledge */
+  .knowledge-card { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
+  .knowledge-card h3 { font-size:15px; color:var(--primary); margin-bottom:8px; }
+  .knowledge-card .mnemonic { background:#e8f0fe; border-radius:8px; padding:10px; margin:8px 0; font-size:13px; line-height:1.8; font-weight:500; }
+  .knowledge-card ul { padding-left:18px; font-size:13px; line-height:1.8; }
+  .knowledge-card li { margin-bottom:4px; }
+
+  /* Nav */
+  .bottom-nav { display:flex; background:#fff; border-top:1px solid var(--border); padding:6px 0; padding-bottom:calc(6px + env(safe-area-inset-bottom)); }
+  .nav-item { flex:1; text-align:center; padding:6px; cursor:pointer; color:var(--sub); font-size:12px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .nav-item.active { color:var(--primary); }
+  .nav-item .nav-icon { font-size:20px; }
+
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.show { display:flex; }
+  .modal { background:#fff; border-radius:var(--radius); padding:24px; max-width:380px; width:100%; text-align:center; }
+  .modal h3 { font-size:18px; margin-bottom:8px; }
+  .modal p { font-size:14px; color:var(--sub); margin-bottom:16px; line-height:1.6; }
+  .modal .btn { width:100%; margin-bottom:8px; }
+
+  /* Animations */
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  .page.active { animation:fadeIn .3s ease; }
+
+  .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.8); color:#fff; padding:10px 20px; border-radius:8px; font-size:14px; z-index:300; display:none; }
+  .toast.show { display:block; animation:fadeIn .3s; }
+
+  .category-tabs { display:flex; gap:8px; overflow-x:auto; padding:4px 0 12px; margin-bottom:4px; }
+  .cat-tab { white-space:nowrap; padding:8px 16px; border-radius:20px; font-size:13px; font-weight:500; background:#e8f0fe; color:var(--primary); cursor:pointer; border:2px solid transparent; }
+  .cat-tab.active { background:var(--primary); color:#fff; }
+  .cat-tab:active { transform:scale(.95); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <h1 id="headerTitle">🚗 驾考模拟考试</h1>
+        <div class="sub" id="headerSub">2026最新题库 · 科目一+科目四</div>
+      </div>
+      <div class="timer" id="timer" style="display:none;">⏱ 45:00</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <!-- Page: Home -->
+  <div class="page active" id="pageHome">
+    <div class="hero">
+      <h2>📋 2026驾考模拟考试</h2>
+      <p>基于最新扣分五档制(1/3/6/9/12分)<br>涵盖科目一+科目四全部必考考点</p>
+    </div>
+    <div class="stats">
+      <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-label">总题数</div></div>
+      <div class="stat-card"><div class="stat-num" id="statDone">0</div><div class="stat-label">已练习</div></div>
+      <div class="stat-card"><div class="stat-num" id="statAcc">0%</div><div class="stat-label">正确率</div></div>
+    </div>
+
+    <div class="section-title">📝 模拟考试</div>
+    <div class="exam-card" onclick="startExam(100)">
+      <div class="exam-icon blue">📋</div>
+      <div class="exam-info"><h3>全真模拟考试</h3><p>100题 · 45分钟 · 90分及格</p></div>
+      <div class="exam-arrow">›</div>
+    </div>
+    <div class="exam-card" onclick="startExam(50)">
+      <div class="exam-icon green">⚡</div>
+      <div class="exam-info"><h3>快速模考</h3><p>50题 · 20分钟 · 模拟真实考试</p></div>
+      <div class="exam-arrow">›</div>
+    </div>
+
+    <div class="section-title">📚 专项练习</div>
+    <div class="category-tabs" id="catTabs"></div>
+    <div id="practiceList"></div>
+
+    <div class="section-title">📖 重点知识速记</div>
+    <div class="exam-card" onclick="showPage('pageKnowledge')">
+      <div class="exam-icon purple">🧠</div>
+      <div class="exam-info"><h3>扣分口诀+易错归纳</h3><p>五档扣分速记 · 让行规则 · 能见度口诀</p></div>
+      <div class="exam-arrow">›</div>
+    </div>
+    <div class="exam-card" onclick="showWrongBook()">
+      <div class="exam-icon red">📕</div>
+      <div class="exam-info"><h3>错题本</h3><p id="wrongCount">暂无错题</p></div>
+      <div class="exam-arrow">›</div>
+    </div>
+  </div>
+
+  <!-- Page: Exam -->
+  <div class="page" id="pageExam">
+    <div id="questionArea"></div>
+    <div class="btn-row" id="examBtns">
+      <button class="btn btn-outline" onclick="prevQuestion()" id="btnPrev">上一题</button>
+      <button class="btn btn-primary" onclick="nextQuestion()" id="btnNext">下一题</button>
+    </div>
+  </div>
+
+  <!-- Page: Result -->
+  <div class="page" id="pageResult">
+    <div style="text-align:center;padding:20px 0;">
+      <div class="result-circle" id="resultCircle"><span id="resultScore">0</span><small>得分</small></div>
+      <h2 id="resultTitle" style="margin-bottom:8px;"></h2>
+      <p style="color:var(--sub);font-size:14px;" id="resultDesc"></p>
+    </div>
+    <div class="result-stats">
+      <div class="rs-card"><div class="rs-num" style="color:var(--accent);" id="rsCorrect">0</div><div class="rs-label">答对</div></div>
+      <div class="rs-card"><div class="rs-num" style="color:var(--danger);" id="rsWrong">0</div><div class="rs-label">答错</div></div>
+      <div class="rs-card"><div class="rs-num" style="color:var(--primary);" id="rsTotal">0</div><div class="rs-label">总题数</div></div>
+    </div>
+    <div class="wrong-list" id="wrongList"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="showPage('pageHome')">返回首页</button>
+      <button class="btn btn-outline" onclick="reviewWrong()" id="btnReview" style="display:none;">复习错题</button>
+    </div>
+  </div>
+
+  <!-- Page: Knowledge -->
+  <div class="page" id="pageKnowledge">
+    <div class="knowledge-card">
+      <h3>🔴 扣12分 — 一票清空</h3>
+      <div class="mnemonic">口诀：酒 伪 亡 反 买卖分</div>
+      <ul>
+        <li>🍺 <b>酒驾</b>：饮酒/醉酒驾驶机动车</li>
+        <li>📄 <b>伪造变造</b>：伪造、变造号牌/驾驶证/行驶证</li>
+        <li>💀 <b>致人重伤/死亡后逃逸</b>（不构成犯罪也扣12分）</li>
+        <li>🔄 <b>高速/快速路倒车、逆行、穿越中央分隔带掉头</b></li>
+        <li>💰 <b>代替他人考试 / 组织替考牟利</b>（2026新增）</li>
+        <li>⚡ 超速50%以上（普通道路）</li>
+        <li>🚌 饮酒后驾驶营运机动车</li>
+      </ul>
+    </div>
+    <div class="knowledge-card">
+      <h3>🟠 扣9分 — 三道红线</h3>
+      <div class="mnemonic">口诀：停车 不符 没号牌</div>
+      <ul>
+        <li>🅿️ <b>高速/快速路违法停车</b>（2026从6分升为9分⚠️）</li>
+        <li>🔀 <b>准驾车型不符</b>（2026从12分降为9分）</li>
+        <li>🚫 <b>未悬挂/故意遮挡/污损号牌</b>（2026从12分降为9分）</li>
+        <li>🚌 未取得校车资格驾驶校车</li>
+        <li>⏱️ 连续驾驶中型以上载客汽车/危险品车超4小时未休息</li>
+      </ul>
+    </div>
+    <div class="knowledge-card">
+      <h3>🟡 扣6分 — 四个禁区</h3>
+      <div class="mnemonic">口诀：占 扣 轻信 闯红灯</div>
+      <ul>
+        <li>🚨 <b>占用应急车道</b>（高速/快速路）</li>
+        <li>📛 <b>驾驶证被暂扣/扣留期间开车</b></li>
+        <li>🏃 <b>致人轻微伤/财产损失后逃逸</b>（不构成犯罪）</li>
+        <li>🚦 <b>闯红灯</b>（不按交通信号灯通行）</li>
+        <li>⚡ 高速超速20%-50% / 普通路超速50%以上</li>
+        <li>🚧 高速骑轧分界线（2026从3分升为6分⚠️）</li>
+      </ul>
+    </div>
+    <div class="knowledge-card">
+      <h3>🟢 扣3分 — 七个高频</h3>
+      <div class="mnemonic">口诀：让 道 超 装 电 警 低</div>
+      <ul>
+        <li>🚸 <b>不避让校车 / 人行横道不礼让行人</b></li>
+        <li>🛣️ <b>高速/快速路不按规定车道行驶</b></li>
+        <li>🚗 <b>不按规定超车/让行 / 逆行</b>（普通道路）</li>
+        <li>🔢 <b>不按规定安装号牌</b></li>
+        <li>📱 <b>开车打电话/接听手持电话</b></li>
+        <li>⚠️ <b>故障停车未设警告标志/灯光</b></li>
+        <li>🐌 <b>高速低于最低限速行驶</b></li>
+      </ul>
+    </div>
+    <div class="knowledge-card">
+      <h3>🔵 扣1分 — 六个底线</h3>
+      <div class="mnemonic">口诀：禁 灯 掉 会 安检</div>
+      <ul>
+        <li>🚫 <b>违反禁令标志/禁止标线</b></li>
+        <li>💡 <b>不按规定使用灯光</b>（远光灯滥用等）</li>
+        <li>↩️ <b>不按规定倒车/掉头</b>（普通道路）</li>
+        <li>🚗 <b>不按规定会车</b></li>
+        <li>🔒 <b>不系安全带 / 不戴头盔</b></li>
+        <li>📋 <b>未按规定年检仍上路</b>（2026从3分降为1分）</li>
+      </ul>
+    </div>
+    <div class="knowledge-card">
+      <h3>🌫️ 高速能见度口诀：261-145-520</h3>
+      <div class="mnemonic">
+        能见度＜200米 → 车速≤60，车距≥100米（261）<br>
+        能见度＜100米 → 车速≤40，车距≥50米（145）<br>
+        能见度＜50米 → 车速≤20，尽快驶离高速（520）
+      </div>
+    </div>
+    <div class="knowledge-card">
+      <h3>🚦 让行规则</h3>
+      <ul>
+        <li>✅ <b>转弯让直行</b>，<b>右转让左转</b></li>
+        <li>✅ <b>下坡让上坡</b>（但下坡行至中途、上坡未上时，下坡先行）</li>
+        <li>✅ <b>有障碍让无障碍</b>，安全让危险</li>
+        <li>✅ <b>行人/非机动车优先</b>，人行横道必须停车让行</li>
+        <li>✅ 无信号灯路口：<b>右方来车先行</b>，支路让干路</li>
+      </ul>
+    </div>
+    <div class="knowledge-card">
+      <h3>⚠️ 判断题秒杀技巧</h3>
+      <ul>
+        <li>✅ 含"安全/谨慎/减速/停车让行/仔细观察" → 大概率<b>正确</b></li>
+        <li>❌ 含"加速/迅速/紧急制动/急打方向/猛打方向" → 大概率<b>错误</b></li>
+        <li>⚡ 判断题出现"XX公里/小时"，数字不是30或100 → <b>错误</b></li>
+        <li>🅿️ 题干有"站/队" → <b>30米内</b>不得停车，其余50米内</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="showPage('pageHome')"><span class="nav-icon">🏠</span>首页</div>
+    <div class="nav-item" onclick="showPage('pageKnowledge')"><span class="nav-icon">📖</span>知识</div>
+    <div class="nav-item" onclick="showWrongBook()"><span class="nav-icon">📕</span>错题</div>
+    <div class="nav-item" onclick="showStats()"><span class="nav-icon">📊</span>统计</div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">确认交卷？</h3>
+    <p id="modalDesc">你还有未作答的题目，确定要交卷吗？</p>
+    <button class="btn btn-primary" onclick="submitExam()">确认交卷</button>
+    <button class="btn btn-outline" onclick="closeModal()">继续答题</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== 题库 ==========
+const QUESTIONS = [
+  // ===== 扣分题 (2026新规) =====
+  { id:1, cat:'扣分新规', diff:'hot', q:'在高速公路上违法停车（非紧急情况），2026年新规应扣多少分？', opts:['3分','6分','9分','12分'], ans:2, exp:'2026年新规将高速违法停车从6分提高到9分，因为这种行为极其危险。紧急情况（故障/伤病）按规定停车不扣分。' },
+  { id:2, cat:'扣分新规', diff:'hot', q:'故意遮挡、污损机动车号牌，2026年新规扣多少分？', opts:['6分','9分','12分','3分'], ans:1, exp:'2026年新规从12分降为9分，但仍很严重，同时罚款200-500元。' },
+  { id:3, cat:'扣分新规', diff:'hot', q:'驾驶与准驾车型不符的机动车，2026年新规扣多少分？', opts:['6分','9分','12分','3分'], ans:1, exp:'2026年新规从12分降为9分。准驾不符是指持有的驾驶证与驾驶的车辆类型不匹配。' },
+  { id:4, cat:'扣分新规', diff:'easy', q:'驾驶机动车不按规定使用灯光，扣多少分？', opts:['1分','3分','6分','12分'], ans:0, exp:'不按规定使用灯光（如滥用远光灯、不开灯等）扣1分。' },
+  { id:5, cat:'扣分新规', diff:'easy', q:'驾驶机动车不系安全带，扣多少分？', opts:['1分','3分','6分','不扣分'], ans:0, exp:'不系安全带扣1分，罚款50-200元。' },
+  { id:6, cat:'扣分新规', diff:'hot', q:'驾驶机动车在高速公路上不按交通信号灯通行（闯红灯），扣多少分？', opts:['3分','6分','9分','12分'], ans:1, exp:'闯红灯扣6分，罚款200元。这是高频考点。' },
+  { id:7, cat:'扣分新规', diff:'hot', q:'驾驶机动车在高速公路或者城市快速路上违法占用应急车道行驶，扣多少分？', opts:['3分','6分','9分','12分'], ans:1, exp:'占用应急车道扣6分，罚款200元。应急车道是生命通道，严禁占用。' },
+  { id:8, cat:'扣分新规', diff:'medium', q:'机动车驾驶证被暂扣期间驾驶机动车，扣多少分？', opts:['3分','6分','9分','12分'], ans:1, exp:'暂扣期间开车扣6分，罚款200-2000元。' },
+  { id:9, cat:'扣分新规', diff:'medium', q:'造成致人轻微伤或者财产损失的交通事故后逃逸，尚不构成犯罪的，扣多少分？', opts:['3分','6分','9分','12分'], ans:1, exp:'轻微伤/财产损失逃逸扣6分。注意：致人重伤/死亡后逃逸扣12分。' },
+  { id:10, cat:'扣分新规', diff:'hot', q:'代替他人参加机动车驾驶证考试，2026年新规扣多少分？', opts:['6分','9分','12分','不扣分'], ans:2, exp:'2026年新增规定：代替他人考试或让他人代替自己考试，扣12分，取消考试资格，一年内不得重考。' },
+  { id:11, cat:'扣分新规', diff:'medium', q:'驾驶机动车在高速公路上倒车、逆行、穿越中央分隔带掉头，扣多少分？', opts:['6分','9分','12分','3分'], ans:2, exp:'高速倒车/逆行/穿越掉头是极其危险的行为，直接扣12分。' },
+  { id:12, cat:'扣分新规', diff:'easy', q:'驾驶机动车不避让校车，扣多少分？', opts:['1分','3分','6分','9分'], ans:1, exp:'不避让校车扣3分，罚款200元。校车停靠上下学生时，相邻车道车辆必须停车让行。' },
+  { id:13, cat:'扣分新规', diff:'easy', q:'驾驶机动车行经人行横道，不减速、不停车、不避让行人，扣多少分？', opts:['1分','3分','6分','9分'], ans:1, exp:'人行横道不礼让行人扣3分，罚款200元。' },
+  { id:14, cat:'扣分新规', diff:'medium', q:'驾驶机动车在高速公路上行驶，低于规定最低时速的，扣多少分？', opts:['1分','3分','6分','9分'], ans:1, exp:'高速低于最低限速扣3分。最低限速保障交通流畅，过低反而危险。' },
+  { id:15, cat:'扣分新规', diff:'medium', q:'驾驶机动车有拨打、接听手持电话等妨碍安全驾驶的行为，扣多少分？', opts:['1分','3分','6分','9分'], ans:1, exp:'开车打电话扣3分，罚款200元。分心驾驶极易引发事故。' },
+  { id:16, cat:'扣分新规', diff:'easy', q:'驾驶机动车违反禁令标志、禁止标线指示的，扣多少分？', opts:['1分','3分','6分','9分'], ans:0, exp:'违反禁令标志/标线扣1分。禁令标志多为红圈白底黑图案。' },
+  { id:17, cat:'扣分新规', diff:'medium', q:'饮酒后驾驶机动车，扣多少分？', opts:['6分','9分','12分','3分'], ans:2, exp:'饮酒驾驶扣12分，暂扣驾照6个月，罚款1000-2000元。醉酒驾驶吊销驾照，5年内不得重考。' },
+  { id:18, cat:'扣分新规', diff:'hot', q:'使用伪造、变造的机动车号牌、行驶证、驾驶证的，扣多少分？', opts:['6分','9分','12分','3分'], ans:2, exp:'伪造变造牌证扣12分，罚款5000元，可处15日以下拘留。' },
+  { id:19, cat:'扣分新规', diff:'medium', q:'驾驶未按规定进行安全技术检验的机动车上路行驶，2026年新规扣多少分？', opts:['1分','3分','6分','不扣分'], ans:0, exp:'2026年新规从3分降为1分。但罚款不变（200元），仍需及时年检。' },
+  { id:20, cat:'扣分新规', diff:'hot', q:'在高速公路上长时间骑轧车道分界线行驶，2026年新规扣多少分？', opts:['3分','6分','9分','12分'], ans:1, exp:'2026年新规从3分升为6分。骑轧分界线严重影响后车判断，极易引发事故。' },
+
+  // ===== 能见度/高速题 =====
+  { id:21, cat:'高速能见度', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇能见度小于200米的气象条件时，最高车速不得超过多少？', opts:['20公里/小时','40公里/小时','60公里/小时','80公里/小时'], ans:2, exp:'能见度＜200米（261）：车速≤60km/h，车距≥100米。口诀"261"。' },
+  { id:22, cat:'高速能见度', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇能见度小于100米的气象条件时，最高车速不得超过多少？', opts:['20公里/小时','40公里/小时','60公里/小时','80公里/小时'], ans:1, exp:'能见度＜100米（145）：车速≤40km/h，车距≥50米。口诀"145"。' },
+  { id:23, cat:'高速能见度', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇能见度小于50米的气象条件时，最高车速不得超过多少？', opts:['10公里/小时','20公里/小时','30公里/小时','40公里/小时'], ans:1, exp:'能见度＜50米（520）：车速≤20km/h，从最近出口尽快驶离高速。口诀"520"。' },
+  { id:24, cat:'高速能见度', diff:'medium', q:'能见度小于200米时，除开启雾灯、近光灯、示廓灯和前后位灯外，还需要开启什么灯？', opts:['远光灯','危险报警闪光灯','转向灯','倒车灯'], ans:1, exp:'能见度＜100米时才需要加开危险报警闪光灯。能见度＜200米时只需雾灯+近光灯+示廓灯+前后位灯。本题问的是200米的情况，注意审题。实际上能见度200米时不需要开双闪，100米以下才需要。答案为危险报警闪光灯是干扰项——本题选B（危险报警闪光灯）是错的，正确应为：200米时不需双闪。此题为判断题逻辑，选择题中B是100米以下才需要的。'], type:'single' },
+  { id:25, cat:'高速车速', diff:'medium', q:'高速公路同方向有2条车道时，左侧车道的最低车速是多少？', opts:['60公里/小时','80公里/小时','100公里/小时','120公里/小时'], ans:2, exp:'同向2车道：左侧（快车道）最低100km/h，右侧（慢车道）最低60km/h。' },
+  { id:26, cat:'高速车速', diff:'hard', q:'高速公路同方向有3条车道时，中间车道的最低车速是多少？', opts:['60公里/小时','80公里/小时','90公里/小时','100公里/小时'], ans:2, exp:'同向3车道：左≥110，中≥90，右≥60。记忆：110/90/60。' },
+
+  // ===== 让行规则 =====
+  { id:27, cat:'让行规则', diff:'hot', q:'在没有交通信号灯控制的交叉路口，谁享有优先通行权？', opts:['左方来车','右方来车','直行车','转弯车'], ans:1, exp:'无信号灯路口：右方道路来车先行（右方来车优先）。此外：转弯让直行，右转让左转。' },
+  { id:28, cat:'让行规则', diff:'hot', q:'相对方向行驶时，转弯车辆和直行车辆相遇，谁先行？', opts:['转弯车让直行车','直行车让转弯车','左转车优先','同时通行'], ans:0, exp:'转弯让直行是基本原则。无论是左转还是右转，都要让直行车辆先行。' },
+  { id:29, cat:'让行规则', diff:'medium', q:'相对方向行驶时，右转弯车辆和左转弯车辆相遇，谁先行？', opts:['右转弯车让左转弯车','左转弯车让右转弯车','同时转弯','直行车优先'], ans:0, exp:'右转让左转。因为左转车辆转弯半径大、占用路口时间长，右转车辆应让行。' },
+  { id:30, cat:'让行规则', diff:'medium', q:'机动车行经人行横道时，遇行人正在通过，应当怎么做？', opts:['减速慢行','加速通过','鸣喇叭提醒','停车让行'], ans:3, exp:'行人正在通过人行横道时，必须停车让行。这是法律明确规定的礼让行人义务。' },
+  { id:31, cat:'让行规则', diff:'easy', q:'驾驶机动车通过没有交通信号灯的路口，遇校车停靠上下学生时，应当怎么做？', opts:['加速绕过','鸣喇叭催促','停车等待','减速慢行即可'], ans:2, exp:'校车在同方向停靠上下学生时，相邻车道及后方车辆应当停车等待，不得超越。' },
+
+  // ===== 速度题 =====
+  { id:32, cat:'速度题', diff:'hot', q:'机动车在冰雪、泥泞的道路上行驶时，最高速度不得超过多少？', opts:['15公里/小时','20公里/小时','30公里/小时','40公里/小时'], ans:2, exp:'冰雪/泥泞道路、掉头/转弯/下陡坡、进出非机动车道、窄路窄桥等特殊情况，最高时速30km/h。' },
+  { id:33, cat:'速度题', diff:'medium', q:'机动车在雾、雨、雪、沙尘等低能见度天气中，能见度在50米以内时，最高速度不得超过多少？', opts:['20公里/小时','30公里/小时','40公里/小时','50公里/小时'], ans:1, exp:'普通道路特殊天气能见度50米以内，限速30km/h。高速公路则是另一套标准（261/145/520）。' },
+  { id:34, cat:'速度题', diff:'medium', q:'驾驶机动车在没有道路中心线的城市道路上行驶，最高速度不得超过多少？', opts:['20公里/小时','30公里/小时','40公里/小时','50公里/小时'], ans:2, exp:'无中心线城市道路限速30？不对，是30还是40？记住：无中心线城市道路=30？实际是30km/h（城市）、40km/h（公路）。单选题选30。'], type:'single' },
+
+  // ===== 距离题 =====
+  { id:35, cat:'距离题', diff:'hot', q:'机动车在高速公路上发生故障时，警告标志应当设置在车后多少米以外？', opts:['50米','100米','150米','200米'], ans:2, exp:'高速公路故障：警告标志设在车后150米以外。普通公路是50-100米。' },
+  { id:36, cat:'距离题', diff:'medium', q:'驾驶机动车在夜间会车时，应当在距相对方向来车多少米以内改用近光灯？', opts:['50米','100米','150米','200米'], ans:2, exp:'夜间会车距对面来车150米以内应切换为近光灯，避免远光灯眩目造成事故。' },
+  { id:37, cat:'距离题', diff:'medium', q:'驾驶机动车在高速公路上以100公里/小时以上速度行驶时，与前车保持的最小距离是多少？', opts:['50米','80米','100米','150米'], ans:2, exp:'车速≥100km/h时，车距≥100米；车速＜100km/h时，车距≥50米。' },
+  { id:38, cat:'距离题', diff:'easy', q:'机动车在距离什么地点30米以内不得停车？', opts:['交叉路口','公共汽车站','加油站','以上都对'], ans:3, exp:'公交站、急救站、加油站、消防栓等地点30米内不得停车。交叉路口、隧道口、陡坡等50米内不得停车。' },
+
+  // ===== 处罚/罚款题 =====
+  { id:39, cat:'处罚题', diff:'hot', q:'饮酒后驾驶机动车的，处暂扣多长时间驾驶证，并处罚款？', opts:['1个月','3个月','6个月','12个月'], ans:2, exp:'饮酒驾驶：暂扣驾照6个月，罚款1000-2000元，记12分。再次饮酒驾驶：拘留10日+吊销驾照。' },
+  { id:40, cat:'处罚题', diff:'medium', q:'造成交通事故后逃逸，尚不构成犯罪的，处以什么处罚？', opts:['警告','罚款200-2000元，可拘留15天以下','吊销驾照','只罚款'], ans:1, exp:'逃逸尚不构成犯罪：罚款200-2000元，可并处15日以下拘留，记12分。' },
+  { id:41, cat:'处罚题', diff:'medium', q:'驾驶机动车超速50%以上的，处罚是什么？', opts:['罚款200元','罚款200-2000元，可吊销驾照','只扣分不罚款','警告'], ans:1, exp:'超速50%以上：罚款200-2000元，可并处吊销驾驶证，记12分。' },
+  { id:42, cat:'处罚题', diff:'easy', q:'将机动车交由未取得驾驶证的人驾驶的，处罚是什么？', opts:['只罚款200元','罚款200-2000元，可吊销驾照','警告','拘留'], ans:1, exp:'将车交由无证人员驾驶：罚款200-2000元，可并处吊销驾照。' },
+
+  // ===== 安全文明驾驶(科目四) =====
+  { id:43, cat:'安全驾驶', diff:'hot', q:'行车中遇列队横过道路的学生时，应当怎么做？', opts:['加速抢行','停车让行','降低车速缓慢通过','连续鸣喇叭催促'], ans:1, exp:'遇学生列队横过道路，必须停车让行。学生安全意识较弱，必须确保绝对安全。' },
+  { id:44, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在夜间通过窄路、窄桥时，应当使用什么灯光？', opts:['远光灯','近光灯','危险报警闪光灯','雾灯'], ans:1, exp:'夜间通过窄路窄桥、弯道、坡路等，应使用近光灯，避免远光灯影响对向车辆。' },
+  { id:45, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在山区道路下坡路段，行车制动器突然失效，正确的做法是什么？', opts:['猛踩制动踏板','越两级减挡','逐级或越一级减挡，间歇性使用驻车制动器','继续下坡到平地再处理'], ans:2, exp:'制动器失效时：逐级或越一级减挡利用发动机制动，间歇性使用驻车制动器（不能一次拉死），控制车速安全停车。' },
+  { id:46, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在高速公路上发生故障需要停车检查时，应当在哪里停车？', opts:['在最外侧行车道停车','在内侧行车道停车','在应急车道停车','在匝道口三角地带停车'], ans:2, exp:'高速故障停车：开启双闪→缓慢驶入应急车道→车后150米设警告标志→人员撤离到护栏外→报警。' },
+  { id:47, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在冰雪路面怎样跟车行驶？', opts:['保持较大的跟车距离','开启危险报警闪光灯','不断变换远近光灯','持续鸣喇叭提示前车'], ans:0, exp:'冰雪路面摩擦系数极低，制动距离大幅增加，必须保持比平时更大的跟车距离。' },
+  { id:48, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在雨天行驶，遇前方有行人或非机动车时，应当怎么做？', opts:['加速通过','减速慢行，防止泥水溅到行人','鸣喇叭催促其让路','保持正常速度通过'], ans:1, exp:'雨天经过行人和非机动车时，应减速慢行，防止溅起泥水。这是文明驾驶的基本要求。' },
+  { id:49, cat:'安全驾驶', diff:'hard', q:'驾驶机动车在高速公路减速车道行驶时，以下做法正确的是什么？', opts:['可以超车','可以倒车','依次通行','可以掉头'], ans:2, exp:'减速车道是驶离高速的过渡区域，只能依次减速通行，严禁超车、倒车、掉头。' },
+  { id:50, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在隧道内发生火灾，逃生时的正确做法是什么？', opts:['乘坐电梯逃生','弯腰低姿，用湿毛巾捂住口鼻，按疏散指示标志逃生','留在车内等待救援','打开远光灯照明'], ans:1, exp:'隧道火灾：弯腰低姿（烟气上升）→湿毛巾捂口鼻→按疏散指示标志逃生→不乘电梯→报警。' },
+  { id:51, cat:'安全驾驶', diff:'easy', q:'驾驶人穿高跟鞋驾驶机动车，是否利于安全行车？', opts:['利于安全行车','不影响','不利于安全行车','视情况而定'], ans:2, exp:'穿高跟鞋/拖鞋/厚底鞋驾驶都不利于安全操作踏板，应穿平底鞋驾驶。' },
+  { id:52, cat:'安全驾驶', diff:'medium', q:'驾驶机动车遇后轮爆胎时，正确的操作顺序是什么？①收油减挡缓慢制动 ②握紧方向盘 ③安全驶离行车道 ④停车后设警告标志', opts:['③②①④','②①③④','①②③④','①③②④'], ans:1, exp:'后轮爆胎正确顺序：②握紧方向→①收油减挡缓慢制动→③安全驶离→④停车设标志。先控制方向是关键！' },
+  { id:53, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇前方车辆突然减速或停车，应当怎么做？', opts:['立即紧急制动','先制动减速，后观察避让','急打方向避让','加速从旁绕过'], ans:1, exp:'前车突然减速时：先制动减速（避免追尾），同时观察后视镜确认安全，再考虑避让。不可急打方向。' },
+  { id:54, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在堵车的交叉路口绿灯亮时，应该怎么做？', opts:['借对向车道通过路口','在路口内等待','进入路口等待','加速通过'], ans:1, exp:'堵车时即使绿灯亮，如果前方路口被堵，也不得在路口内停车等候，应停在路口外等待。' },
+  { id:55, cat:'安全驾驶', diff:'easy', q:'驾驶机动车在向左变更车道前，应当怎么做？', opts:['直接变更车道','开启左转向灯后直接变道','观察左后视镜确认安全后，开启转向灯再变道','加速变道'], ans:2, exp:'变更车道正确操作：提前开启转向灯→观察后视镜和侧方→确认安全→平稳变道。' },
+  { id:56, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在车道减少的路段行驶缓慢时，正确的做法是什么？', opts:['穿插到前方排队车辆中通过','依次交替通行','加速从前车左右超越','借对向车道迅速通过'], ans:1, exp:'车道减少路段应"交替通行"（拉链式通行），即左右车道车辆交替依次通过，这是法定规则。' },
+  { id:57, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在雾天行驶，应当开启什么灯光？', opts:['远光灯','近光灯和雾灯','危险报警闪光灯','示廓灯'], ans:1, exp:'雾天应开启雾灯+近光灯+示廓灯+前后位灯。严禁使用远光灯（会在雾中形成漫反射，反而看不清）。' },
+  { id:58, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在雨天行车，为避免发生"水滑"现象，应该怎么做？', opts:['紧急制动','急打方向','降低车速','加速通过'], ans:2, exp:'水滑现象（轮胎与路面间形成水膜）发生时，应降低车速、避免急刹车和急打方向，稳住方向盘。' },
+  { id:59, cat:'安全驾驶', diff:'easy', q:'驾驶机动车在冰雪道路起步时，应当怎么做？', opts:['猛踩加速踏板','缓踩加速踏板，防止打滑','半联动状态下猛加油','不踩油门靠惯性起步'], ans:1, exp:'冰雪路面起步应缓踩油门，缓慢松开离合器，防止驱动轮打滑空转。' },
+  { id:60, cat:'安全驾驶', diff:'hard', q:'罗某驾驶大型卧铺客车（乘载44人，核载44人），在结冰路面以每小时44公里速度行驶，导致侧滑翻下公路，造成15死27伤。罗某的主要违法行为是什么？', opts:['客车超员','超速行驶','疲劳驾驶','操作不当'], ans:1, exp:'结冰路面限速30km/h，罗某以44km/h行驶属于超速。虽然乘载=核载未超员，但冰雪路面超速是主要违法。' },
+
+  // ===== 标志标线题 =====
+  { id:61, cat:'标志标线', diff:'medium', q:'黄底黑边三角形标志表示什么含义？', opts:['禁令标志','警告标志','指示标志','指路标志'], ans:1, exp:'黄底黑边三角形是警告标志，提醒注意前方危险。红圈白底是禁令，蓝底是指示。' },
+  { id:62, cat:'标志标线', diff:'easy', q:'红色圆形标志表示什么含义？', opts:['警告','指示','禁止/限制','指路'], ans:2, exp:'红色圆形标志是禁令标志，表示禁止或限制某种行为（如禁止通行、限速等）。' },
+  { id:63, cat:'标志标线', diff:'medium', q:'路面上的白色虚线和三角地带标线组成的是什么标线？', opts:['减速让行线','停车让行线','人行横道预告标示','导向车道线'], ans:2, exp:'白色菱形图案是人行横道预告标志，提示前方接近人行横道，需减速慢行注意避让行人。' },
+
+  // ===== 英文缩写题 =====
+  { id:64, cat:'英文缩写', diff:'hot', q:'ABS（防抱死制动系统）的作用是什么？', opts:['缩短制动距离','防止车轮抱死，保持转向能力','自动刹车','防止车辆打滑'], ans:1, exp:'ABS（Anti-lock Braking System）防止紧急制动时车轮抱死，保持转向能力，避免侧滑。注意：ABS不一定缩短制动距离。' },
+  { id:65, cat:'英文缩写', diff:'hot', q:'ESP（车身电子稳定系统）的作用是什么？', opts:['控制车速','防止车辆侧滑和失控','自动泊车','胎压监测'], ans:1, exp:'ESP（Electronic Stability Program）通过传感器监测车辆状态，在即将失控时自动制动单个车轮，防止侧滑和翻车。' },
+  { id:66, cat:'英文缩写', diff:'medium', q:'CCS（定速巡航系统）的作用是什么？', opts:['自动刹车','保持设定速度行驶，减轻驾驶疲劳','防止超速','自动驾驶'], ans:1, exp:'CCS（Cruise Control System）定速巡航：设定好速度后，车辆自动保持该速度行驶，无需踩油门，减轻长途驾驶疲劳。' },
+  { id:67, cat:'英文缩写', diff:'medium', q:'EBD（电子制动力分配系统）的作用是什么？', opts:['增加制动力','根据负载自动分配前后轮制动力','防止车轮抱死','自动刹车'], ans:1, exp:'EBD（Electronic Brakeforce Distribution）根据车辆负载情况，自动调节前后轮制动力分配，提高制动效率和稳定性。' },
+
+  // ===== 判断题 =====
+  { id:68, cat:'判断题', diff:'medium', q:'夜间驾驶机动车在窄路或者窄桥遇自行车对向驶来时，应当使用远光灯。', opts:['正确','错误'], ans:1, exp:'夜间窄路/窄桥遇对向自行车，应使用近光灯，避免远光灯晃眼导致对方摔倒或操作失误。' },
+  { id:69, cat:'判断题', diff:'easy', q:'驾驶机动车在道路上发生交通事故，仅造成轻微财产损失，并且基本事实清楚的，当事人应当先撤离现场再进行协商处理。', opts:['正确','错误'], ans:0, exp:'轻微财产损失+事实清楚→先撤离现场再协商（防止二次事故和交通拥堵），这是正确的"快处快赔"原则。' },
+  { id:70, cat:'判断题', diff:'medium', q:'驾驶机动车在高速公路上行驶，遇雾天能见度小于50米时，可以继续在高速公路上行驶。', opts:['正确','错误'], ans:1, exp:'能见度＜50米时，车速≤20km/h，必须从最近出口尽快驶离高速，不得继续在高速上行驶。' },
+  { id:71, cat:'判断题', diff:'easy', q:'驾驶机动车在道路上掉头时，应当提前开启左转向灯。', opts:['正确','错误'], ans:0, exp:'掉头属于向左变更方向，应提前开启左转向灯，观察确认安全后再掉头。' },
+  { id:72, cat:'判断题', diff:'medium', q:'驾驶机动车在交叉路口前变更车道时，应当在路口实线区内根据需要变更。', opts:['正确','错误'], ans:1, exp:'实线区禁止变道！应在路口前的虚线区按导向箭头指示提前变更车道。' },
+  { id:73, cat:'判断题', diff:'hot', q:'驾驶机动车在高速公路上行驶，可以在应急车道上临时停车休息。', opts:['正确','错误'], ans:1, exp:'应急车道严禁停车休息！只有车辆故障/事故等紧急情况才能使用应急车道。' },
+  { id:74, cat:'判断题', diff:'easy', q:'驾驶机动车在道路上行驶时，应当随身携带机动车驾驶证和行驶证。', opts:['正确','错误'], ans:0, exp:'开车必须随身携带驾驶证和行驶证（或电子证件），这是法律规定。' },
+  { id:75, cat:'判断题', diff:'medium', q:'驾驶机动车在隧道内行驶时，可以变更车道。', opts:['正确','错误'], ans:1, exp:'隧道内严禁变道！隧道空间封闭、视线差，变道极易引发碰撞事故。' },
+  { id:76, cat:'判断题', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇前方发生交通事故堵塞时，可以在行车道内停车等待。', opts:['正确','错误'], ans:1, exp:'高速堵塞时应在本车道内依次排队等候，开启双闪，保持安全距离，不得随意变道或占用应急车道。但"在行车道内停车"表述有争议——实际是跟随前车缓慢移动或停下，不是主动停车。此题选错误。' },
+  { id:77, cat:'判断题', diff:'easy', q:'驾驶机动车在雨天行车，遇撑雨伞的行人时，应当减速慢行。', opts:['正确','错误'], ans:0, exp:'雨天行人撑伞视线受限，驾驶人应减速慢行，随时准备停车避让。' },
+
+  // ===== 多选题 =====
+  { id:78, cat:'多选题', diff:'hard', q:'下列哪些行为属于驾驶机动车的禁止行为？（多选）', opts:['在车门、车厢未关好时行车','使用蓝牙功能接听电话','向道路上抛撒物品','观看车载视频'], ans:[0,2,3], multi:true, exp:'A车门未关好行车→危险；C向路面抛撒物品→危害他人；D观看车载视频→严重分心。B使用蓝牙接听电话是允许的（但手持电话不行）。' },
+  { id:79, cat:'多选题', diff:'hard', q:'驾驶机动车在隧道中行驶，正确的做法是什么？（多选）', opts:['提高车速尽快驶离','注意和前车保持安全距离','按照规定限速行驶','在隧道内紧急停车带停车休息'], ans:[1,2], multi:true, exp:'隧道内应按规定限速行驶+保持安全距离。A提高车速错误，D非紧急情况不得在紧急停车带停车休息。' },
+  { id:80, cat:'多选题', diff:'hard', q:'驾驶机动车遇前方路段车道减少时，为保证安全有序应当怎样做？（多选）', opts:['穿插到前方排队车辆中通过','依次交替通行','加速从前车左右超越','减速慢行，有序通过'], ans:[1,3], multi:true, exp:'车道减少应交替通行（拉链式）+减速有序通过。禁止穿插加塞和加速超越。' },
+  { id:81, cat:'多选题', diff:'medium', q:'驾驶机动车在雨天行驶，遇前方有非机动车和积水路面时，正确的做法是什么？（多选）', opts:['减速慢行','正常行驶','加速通过','注意行人动态'], ans:[0,3], multi:true, exp:'雨天积水路面应减速慢行（防止溅水）+注意行人动态（行人可能突然横穿）。' },
+  { id:82, cat:'多选题', diff:'hard', q:'驾驶机动车在山区道路上坡路段发生故障需停车检修时，正确的做法是什么？（多选）', opts:['拉起驻车制动器','开启危险报警闪光灯','在后方用石块塞住车轮防止后溜','在车后方设置警示标志'], ans:[0,1,2,3], multi:true, exp:'山区上坡故障停车：拉手刹+开双闪+塞车轮防后溜+设警告标志，四项全部正确。' },
+  { id:83, cat:'多选题', diff:'hot', q:'驾驶机动车在下坡行驶过程中行车制动器失效，正确的做法是什么？（多选）', opts:['驶入紧急避险车道','使用发动机制动（逐级减挡）','使用驻车制动器制动','必要时用车体刮擦路边障碍物减速'], ans:[0,1,2,3], multi:true, exp:'制动器失效应急处置：发动机制动（减挡）+驻车制动+紧急避险车道+必要时刮擦障碍物。四项全对。' },
+  { id:84, cat:'多选题', diff:'medium', q:'行车中看到注意儿童标志时，应采取哪些措施？（多选）', opts:['加速行驶','绕道行驶','谨慎选择行车速度','随时准备停车'], ans:[2,3], multi:true, exp:'注意儿童标志提示前方可能有儿童突然横穿，应减速+随时准备停车。不可加速或绕道（可能更危险）。' },
+  { id:85, cat:'多选题', diff:'hard', q:'关于防御性驾驶方法，做法正确的是什么？（多选）', opts:['熟悉车辆性能，做好预防性自检','遵守交通法规，文明礼让出行','环顾周围环境，提前预测险情','保持安全距离，预留缓冲空间'], ans:[0,1,2,3], multi:true, exp:'防御性驾驶核心理念：预估风险+提前准备+文明礼让+保持车距。四项全对。' },
+
+  // ===== 新增2026热门题 =====
+  { id:86, cat:'新能源', diff:'hot', q:'驾驶新能源汽车起步时，正确的做法是什么？', opts:['起步时猛踩加速踏板','起步时缓踩加速踏板','开启辅助驾驶功能时无需观察路面','开启辅助驾驶时可以双手离开方向盘'], ans:1, exp:'新能源车起步应缓踩加速踏板（扭矩大容易打滑）。辅助驾驶≠自动驾驶，双手不得离开方向盘，仍需观察路面。' },
+  { id:87, cat:'新能源', diff:'medium', q:'关于新能源汽车的驾驶，以下说法正确的是什么？', opts:['可以长时间踩住加速踏板不松','频繁急加速有助于电池保养','合理使用能量回收功能可增加续航','新能源汽车不需要定期检查'], ans:2, exp:'合理使用能量回收（松油门时自动减速充电）可以有效增加续航里程。新能源车也需要定期检查和保养。' },
+  { id:88, cat:'扣分新规', diff:'hot', q:'驾驶机动车在城市快速路上倒车，应扣多少分？', opts:['3分','6分','9分','12分'], ans:3, exp:'城市快速路属于"高快路"范畴，倒车/逆行/穿越掉头扣12分。注意：普通道路倒车只扣1分。' },
+  { id:89, cat:'安全驾驶', diff:'medium', q:'驾驶机动车在高速公路行驶，遇团雾天气能见度极低时，应当怎么做？', opts:['继续以原速行驶','开启远光灯提高能见度','减速并尽快从最近出口驶离高速','在行车道内停车等待雾散'], ans:2, exp:'团雾天气能见度极低时，最安全的做法是减速并尽快从最近出口驶离高速公路，不可在行车道停车。' },
+  { id:90, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇前方车辆排队等候时，正确的做法是什么？', opts:['从应急车道超越','穿插到前方车辆中间','依次排队等候，保持安全距离','倒车从其他出口驶离'], ans:2, exp:'前方排队时应依次等候+保持安全距离+开启双闪。严禁占用应急车道、穿插加塞或倒车。' },
+  { id:91, cat:'扣分新规', diff:'easy', q:'驾驶机动车未按规定系安全带，扣多少分？', opts:['不扣分','1分','3分','6分'], ans:1, exp:'不系安全带扣1分，罚款50-200元。安全带是生命带，无论前后排都应系好。' },
+  { id:92, cat:'判断题', diff:'medium', q:'驾驶机动车在高速公路上行驶，可以在路肩上临时停车。', opts:['正确','错误'], ans:1, exp:'路肩（应急车道）仅供紧急情况使用，临时停车休息也属违法，扣6分。' },
+  { id:93, cat:'安全驾驶', diff:'hard', q:'驾驶机动车在高速公路上行驶，遇后车鸣喇叭要求让行超车，应当怎么做？', opts:['加速不让','减速靠右让行','急刹车阻止','变道到应急车道让行'], ans:1, exp:'后车要超车时，应减速靠右适当让行，不加速不让、不急刹、不变应急车道。安全礼让是正确做法。' },
+  { id:94, cat:'标志标线', diff:'medium', q:'蓝底白色箭头圆形标志表示什么含义？', opts:['警告标志','禁令标志','指示标志（指示行驶方向）','指路标志'], ans:2, exp:'蓝底白图案是指示标志，指示车辆行驶方向或通行规则。圆形蓝底白箭头表示"按箭头方向行驶"。' },
+  { id:95, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在高速公路上发生故障难以移动时，应当怎么做？', opts:['在车内等待救援','开启危险报警闪光灯，在车后150米设警告标志，人员撤离到护栏外','在行车道内放置警告标志','继续尝试启动车辆'], ans:1, exp:'高速故障难移动：开启双闪→车后150米设警告标志→所有人员撤离到护栏外安全地带→报警等待救援。人在车内非常危险！' },
+  { id:96, cat:'处罚题', diff:'medium', q:'因交通肇事逃逸致人死亡的，处多少年有期徒刑？', opts:['3年以下','3-7年','7年以上','10年以上'], ans:2, exp:'交通肇事罪量刑：一般事故3年以下或拘役；逃逸或有恶劣情节3-7年；因逃逸致人死亡7年以上。' },
+  { id:97, cat:'扣分新规', diff:'easy', q:'驾驶机动车不按规定会车的，扣多少分？', opts:['1分','3分','6分','不扣分'], ans:0, exp:'不按规定会车扣1分。会车时应靠右行驶，保持安全距离，注意避让。' },
+  { id:98, cat:'安全驾驶', diff:'medium', q:'驾驶机动车通过铁路道口时，应当怎么做？', opts:['加速通过','在道口内停车观察','一停二看三通过','鸣喇叭后快速通过'], ans:2, exp:'通过铁路道口原则："一停二看三通过"。注意听是否有火车鸣笛，确认安全后再低速通过。' },
+  { id:99, cat:'判断题', diff:'easy', q:'驾驶机动车在道路上超车时，可以不必提前开启左转向灯。', opts:['正确','错误'], ans:1, exp:'超车必须提前开启左转向灯，告知前车和后车你的意图，这是基本安全要求。' },
+  { id:100, cat:'安全驾驶', diff:'hot', q:'驾驶机动车在高速公路上行驶，遇大风天气时，应当怎么做？', opts:['加速行驶减少暴露时间','降低车速，握稳方向盘','靠左行驶避开右侧风口','频繁变道寻找避风位置'], ans:1, exp:'大风天气高速行车应降低车速+握稳方向盘（防止侧风偏移），保持安全车距，必要时进入服务区休息等待。' },
+];
+
+// 修复第24题
+QUESTIONS[23] = { id:24, cat:'高速能见度', diff:'medium', q:'驾驶机动车在高速公路上行驶，遇能见度小于100米的气象条件时，应当开启什么灯光？', opts:['远光灯','雾灯、近光灯、示廓灯、前后位灯和危险报警闪光灯','仅开启危险报警闪光灯','仅开启近光灯'], ans:1, exp:'能见度＜100米时，应开启雾灯+近光灯+示廓灯+前后位灯+危险报警闪光灯（双闪），共5种灯。' };
+
+// 修复第34题
+QUESTIONS[33] = { id:34, cat:'速度题', diff:'medium', q:'驾驶机动车在没有道路中心线的城市道路上行驶，最高速度不得超过多少？', opts:['20公里/小时','30公里/小时','40公里/小时','50公里/小时'], ans:1, exp:'无中心线城市道路限速30km/h；无中心线公路（郊区）限速40km/h。记忆：城市30，公路40。' };
+
+// ===== 分类 =====
+const CATEGORIES = [
+  { name:'全部', icon:'📋', filter:null },
+  { name:'扣分新规', icon:'🔴', filter:q=>q.cat==='扣分新规' },
+  { name:'高速能见度', icon:'🌫️', filter:q=>q.cat==='高速能见度'||q.cat==='高速车速' },
+  { name:'让行规则', icon:'🚦', filter:q=>q.cat==='让行规则' },
+  { name:'速度距离', icon:'⏱️', filter:q=>q.cat==='速度题'||q.cat==='距离题' },
+  { name:'安全驾驶', icon:'🛡️', filter:q=>q.cat==='安全驾驶' },
+  { name:'处罚罚款', icon:'💰', filter:q=>q.cat==='处罚题' },
+  { name:'英文缩写', icon:'🔤', filter:q=>q.cat==='英文缩写' },
+  { name:'标志标线', icon:'🚧', filter:q=>q.cat==='标志标线' },
+  { name:'判断题', icon:'✅', filter:q=>q.cat==='判断题' },
+  { name:'多选题', icon:'☑️', filter:q=>q.cat==='多选题' },
+  { name:'新能源', icon:'🔋', filter:q=>q.cat==='新能源' },
+];
+
+// ===== 状态管理 =====
+let state = {
+  currentPage:'pageHome',
+  examMode:null, // 'full'|'quick'|'practice'
+  examQuestions:[],
+  currentQ:0,
+  answers:{},
+  startTime:0,
+  timerInterval:null,
+  wrongBook:JSON.parse(localStorage.getItem('wrongBook')||'[]'),
+  stats:JSON.parse(localStorage.getItem('examStats')||'{"total":0,"correct":0}'),
+};
+
+// ===== 初始化 =====
+function init() {
+  renderHome();
+  renderCatTabs();
+  updateStats();
+}
+
+function renderHome() {
+  const list = document.getElementById('practiceList');
+  // 热门分类卡片
+  const cats = [
+    { name:'扣分新规', icon:'🔴', desc:'2026五档扣分必考', filter:q=>q.cat==='扣分新规', count:QUESTIONS.filter(q=>q.cat==='扣分新规').length },
+    { name:'高速能见度', icon:'🌫️', desc:'261/145/520口诀', filter:q=>q.cat==='高速能见度'||q.cat==='高速车速', count:QUESTIONS.filter(q=>q.cat==='高速能见度'||q.cat==='高速车速').length },
+    { name:'让行规则', icon:'🚦', desc:'转弯让直行高频考点', filter:q=>q.cat==='让行规则', count:QUESTIONS.filter(q=>q.cat==='让行规则').length },
+    { name:'安全驾驶', icon:'🛡️', desc:'科目四案例分析', filter:q=>q.cat==='安全驾驶', count:QUESTIONS.filter(q=>q.cat==='安全驾驶').length },
+    { name:'英文缩写', icon:'🔤', desc:'ABS/ESP/EBD速记', filter:q=>q.cat==='英文缩写', count:QUESTIONS.filter(q=>q.cat==='英文缩写').length },
+    { name:'判断题', icon:'✅', desc:'秒杀技巧训练', filter:q=>q.cat==='判断题', count:QUESTIONS.filter(q=>q.cat==='判断题').length },
+  ];
+  list.innerHTML = cats.map(c=>`
+    <div class="exam-card" onclick="startPractice('${c.name}')">
+      <div class="exam-icon orange">${c.icon}</div>
+      <div class="exam-info"><h3>${c.name}</h3><p>${c.desc}（${c.count}题）</p></div>
+      <div class="exam-arrow">›</div>
+    </div>
+  `).join('');
+
+  // 错题本计数
+  const wc = document.getElementById('wrongCount');
+  if(state.wrongBook.length>0) wc.textContent = `共${state.wrongBook.length}道错题待复习`;
+  else wc.textContent = '暂无错题，继续加油！';
+}
+
+function renderCatTabs() {
+  const tabs = document.getElementById('catTabs');
+  tabs.innerHTML = CATEGORIES.map((c,i)=>`<div class="cat-tab ${i===0?'active':''}" onclick="filterByCat(${i},this)">${c.icon} ${c.name}</div>`).join('');
+}
+
+function filterByCat(idx,el) {
+  document.querySelectorAll('.cat-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const cat = CATEGORIES[idx];
+  const list = document.getElementById('practiceList');
+  let qs = cat.filter ? QUESTIONS.filter(cat.filter) : QUESTIONS;
+  // shuffle
+  qs = qs.slice().sort(()=>Math.random()-0.5).slice(0,20);
+  list.innerHTML = qs.map((q,i)=>`
+    <div class="exam-card" onclick="startCustomExam([${qs.map(x=>x.id).join(',')}],${i})">
+      <div class="exam-icon blue">${i+1}</div>
+      <div class="exam-info"><h3 style="font-size:13px;">${q.q.substring(0,30)}...</h3><p>${q.cat} · ${q.diff==='hot'?'🔥热门':q.diff==='hard'?'💀困难':'⭐普通'}</p></div>
+      <div class="exam-arrow">›</div>
+    </div>
+  `).join('');
+}
+
+// ===== 页面切换 =====
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  state.currentPage = pageId;
+  // nav
+  const navMap = {'pageHome':0,'pageKnowledge':1};
+  document.querySelectorAll('.nav-item').forEach((n,i)=>{
+    n.classList.toggle('active', i===navMap[pageId] || (pageId==='pageHome'&&i===0) );
+  });
+  if(pageId==='pageHome') {
+    document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',i===0));
+    updateStats();
+  }
+  if(pageId==='pageExam') document.getElementById('timer').style.display='block';
+  else document.getElementById('timer').style.display='none';
+}
+
+// ===== 考试流程 =====
+function startExam(total) {
+  let qs;
+  if(total===100) {
+    qs = QUESTIONS.slice().sort(()=>Math.random()-0.5);
+  } else {
+    // 50题快速模考：按权重抽取
+    const hot = QUESTIONS.filter(q=>q.diff==='hot');
+    const others = QUESTIONS.filter(q=>q.diff!=='hot');
+    qs = [...hot.sort(()=>Math.random()-0.5).slice(0,25), ...others.sort(()=>Math.random()-0.5).slice(0,25)];
+    qs = qs.sort(()=>Math.random()-0.5);
+  }
+  beginExam(qs, total===100?'full':'quick');
+}
+
+function startPractice(catName) {
+  const cat = CATEGORIES.find(c=>c.name===catName);
+  const qs = cat.filter ? QUESTIONS.filter(cat.filter).sort(()=>Math.random()-0.5) : QUESTIONS;
+  beginExam(qs.slice(0,20), 'practice');
+}
+
+function startCustomExam(ids, startIdx) {
+  const qs = ids.map(id=>QUESTIONS.find(q=>q.id===id)).filter(Boolean);
+  beginExam(qs, 'practice', startIdx||0);
+}
+
+function beginExam(questions, mode, startQ) {
+  state.examMode = mode;
+  state.examQuestions = questions;
+  state.currentQ = startQ || 0;
+  state.answers = {};
+  state.startTime = Date.now();
+  if(mode==='full') startTimer(45*60);
+  else if(mode==='quick') startTimer(20*60);
+  showPage('pageExam');
+  renderQuestion();
+}
+
+function startTimer(seconds) {
+  clearInterval(state.timerInterval);
+  let left = seconds;
+  const el = document.getElementById('timer');
+  el.style.display='block';
+  state.timerInterval = setInterval(()=>{
+    left--;
+    const m = Math.floor(left/60), s = left%60;
+    el.textContent = `⏱ ${m}:${s<10?'0':''}${s}`;
+    if(left<=0) { clearInterval(state.timerInterval); submitExam(); }
+  },1000);
+}
+
+function renderQuestion() {
+  const idx = state.currentQ;
+  const q = state.examQuestions[idx];
+  if(!q) return;
+  const total = state.examQuestions.length;
+  // progress
+  const pct = ((idx)/total*100).toFixed(0);
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('headerTitle').textContent = `${idx+1}/${total} 题`;
+  document.getElementById('headerSub').textContent = `${q.cat} · ${q.diff==='hot'?'🔥热门':q.diff==='hard'?'💀困难':'⭐普通'}${q.multi?' · 多选':''}`;
+
+  const area = document.getElementById('questionArea');
+  const optsHtml = q.opts.map((o,i)=>{
+    const sel = state.answers[idx] && state.answers[idx].includes(i);
+    return `<div class="q-option ${sel?'selected':''}" onclick="selectOption(${i})">
+      <div class="opt-letter">${String.fromCharCode(65+i)}</div>
+      <div>${o}</div>
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `
+    <div class="q-meta">
+      <span class="q-tag type">${q.multi?'多选题':'单选题'}</span>
+      <span class="q-tag cat">${q.cat}</span>
+      ${q.diff==='hot'?'<span class="q-tag hot">🔥热门</span>':''}
+      ${q.diff==='hard'?'<span class="q-tag diff">💀困难</span>':''}
+    </div>
+    <div class="q-stem">
+      <div class="q-num">第 ${idx+1} 题 / 共 ${total} 题</div>
+      <div class="q-text">${q.q}</div>
+    </div>
+    <div class="q-options">${optsHtml}</div>
+    <div class="q-explain" id="qExplain">
+      <h4>📝 解析</h4>
+      <p>${q.exp}</p>
+    </div>
+  `;
+
+  // buttons
+  document.getElementById('btnPrev').style.visibility = idx===0?'hidden':'visible';
+  const isLast = idx===total-1;
+  document.getElementById('btnNext').textContent = isLast?'交卷':'下一题';
+  document.getElementById('btnNext').onclick = isLast?()=>showModal():()=>nextQuestion();
+}
+
+function selectOption(i) {
+  const q = state.examQuestions[state.currentQ];
+  const explainEl = document.getElementById('qExplain');
+  // 已经显示答案后不允许再选
+  if(state.answers[state.currentQ] && state.answers[state.currentQ].revealed) return;
+
+  let cur = state.answers[state.currentQ] || [];
+  if(q.multi) {
+    if(cur.includes(i)) cur = cur.filter(x=>x!==i);
+    else cur.push(i);
+    state.answers[state.currentQ] = cur;
+  } else {
+    state.answers[state.currentQ] = [i];
+    // 单选自动显示答案
+    revealAnswer();
+    return;
+  }
+  renderQuestion();
+  // restore selection
+  // re-bind selected state
+  const opts = document.querySelectorAll('.q-option');
+  cur.forEach(ci=>{ if(opts[ci]) opts[ci].classList.add('selected'); });
+}
+
+function revealAnswer() {
+  const idx = state.currentQ;
+  const q = state.examQuestions[idx];
+  const selected = state.answers[idx] || [];
+  const correct = Array.isArray(q.ans)?q.ans:[q.ans];
+  const isCorrect = selected.length===correct.length && selected.every((v,i)=>correct.includes(v));
+
+  const opts = document.querySelectorAll('.q-option');
+  opts.forEach((el,i)=>{
+    el.classList.add('disabled');
+    if(correct.includes(i)) el.classList.add('correct');
+    else if(selected.includes(i) && !correct.includes(i)) el.classList.add('wrong');
+  });
+  document.getElementById('qExplain').classList.add('show');
+  state.answers[idx] = { ...(Array.isArray(selected)?{vals:selected}:{vals:selected}), revealed:true, correct:isCorrect };
+  // 记录统计
+  state.stats.total++;
+  if(isCorrect) state.stats.correct++;
+  saveStats();
+  // 错题记录
+  if(!isCorrect) {
+    if(!state.wrongBook.find(w=>w.id===q.id)) {
+      state.wrongBook.push({id:q.id, q:q.q, correct:correct, user:selected});
+      localStorage.setItem('wrongBook',JSON.stringify(state.wrongBook));
+    }
+  }
+  // 自动下一题（延迟）
+  if(!q.multi) {
+    setTimeout(()=>{
+      if(state.currentQ < state.examQuestions.length-1) nextQuestion();
+    },1500);
+  }
+}
+
+function nextQuestion() {
+  if(state.currentQ < state.examQuestions.length-1) {
+    state.currentQ++;
+    renderQuestion();
+  } else {
+    showModal();
+  }
+}
+
+function prevQuestion() {
+  if(state.currentQ > 0) {
+    state.currentQ--;
+    renderQuestion();
+  }
+}
+
+function showModal() {
+  // 检查未答
+  const unanswered = state.examQuestions.length - Object.keys(state.answers).filter(k=>state.answers[k]&&state.answers[k].revealed).length;
+  const desc = unanswered>0 ? `你还有 ${unanswered} 题未作答，确定要交卷吗？` : '确定要交卷吗？';
+  document.getElementById('modalDesc').textContent = desc;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+function submitExam() {
+  closeModal();
+  clearInterval(state.timerInterval);
+  document.getElementById('timer').style.display='none';
+
+  // 计算得分
+  let correct = 0, wrong = 0;
+  const wrongList = [];
+  state.examQuestions.forEach((q,idx)=>{
+    const a = state.answers[idx];
+    if(a && a.revealed && a.correct) correct++;
+    else {
+      wrong++;
+      wrongList.push({q, user:a?a.vals:[]});
+    }
+  });
+  const total = state.examQuestions.length;
+  const score = Math.round(correct/total*100);
+
+  // 结果页
+  const circle = document.getElementById('resultCircle');
+  circle.style.setProperty('--pct',score);
+  circle.className = 'result-circle ' + (score>=90?'pass':'fail');
+  document.getElementById('resultScore').textContent = score;
+  document.getElementById('resultTitle').textContent = score>=90?'🎉 考试合格！':'❌ 未达合格线';
+  document.getElementById('resultDesc').textContent = score>=90?'恭喜你通过模拟考试，继续加油！':'合格线90分，再接再厉，重点复习错题！';
+  document.getElementById('rsCorrect').textContent = correct;
+  document.getElementById('rsWrong').textContent = wrong;
+  document.getElementById('rsTotal').textContent = total;
+
+  // 错题列表
+  const wl = document.getElementById('wrongList');
+  if(wrongList.length>0) {
+    wl.innerHTML = '<div class="section-title">❌ 错题回顾</div>' + wrongList.map(w=>{
+      const q = w.q;
+      const correctText = Array.isArray(q.ans)?q.ans.map(i=>String.fromCharCode(65+i)+'.'+q.opts[i]).join(' / '):String.fromCharCode(65+q.ans)+'.'+q.opts[q.ans];
+      const userText = w.user.length?w.user.map(i=>String.fromCharCode(65+i)+'.'+q.opts[i]).join(' / '):'未作答';
+      return `<div class="wrong-item">
+        <div class="wi-q">${q.q}</div>
+        <div class="wi-answer">你的答案：${userText}</div>
+        <div class="wi-correct">正确答案：${correctText}</div>
+        <div style="font-size:12px;color:var(--sub);margin-top:4px;">📝 ${q.exp}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('btnReview').style.display='inline-block';
+  } else {
+    wl.innerHTML='';
+    document.getElementById('btnReview').style.display='none';
+  }
+
+  showPage('pageResult');
+  updateStats();
+}
+
+function reviewWrong() {
+  // 收集本次错题重做
+  const wrongQs = [];
+  state.examQuestions.forEach((q,idx)=>{
+    const a = state.answers[idx];
+    if(!a || !a.revealed || !a.correct) wrongQs.push(q);
+  });
+  if(wrongQs.length>0) {
+    beginExam(wrongQs.sort(()=>Math.random()-0.5), 'practice');
+  }
+}
+
+// ===== 错题本 =====
+function showWrongBook() {
+  if(state.wrongBook.length===0) { showToast('暂无错题，继续保持！'); return; }
+  // 用错题生成练习
+  const qs = state.wrongBook.map(w=>QUESTIONS.find(q=>q.id===w.id)).filter(Boolean);
+  beginExam(qs, 'practice');
+}
+
+// ===== 统计 =====
+function updateStats() {
+  document.getElementById('statTotal').textContent = QUESTIONS.length;
+  const done = state.stats.total || 0;
+  document.getElementById('statDone').textContent = done;
+  const acc = done>0 ? Math.round(state.stats.correct/done*100) : 0;
+  document.getElementById('statAcc').textContent = acc+'%';
+}
+
+function saveStats() { localStorage.setItem('examStats',JSON.stringify(state.stats)); }
+
+function showStats() {
+  updateStats();
+  showToast(`总答题：${state.stats.total} | 正确率：${state.stats.total>0?Math.round(state.stats.correct/state.stats.total*100):0}%`);
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// 启动
+init();
+</script>
+</body>
+</html>
